@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  mongodb:
+    container_name: mongodb-api-mds
+    restart: "no" # unless-stopped
+    image: mongo:5.0
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    volumes:
+      - ./docker-entrypoint-initdb.d/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - data_mongodb:/data/db
+    networks:
+      - bridge
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - bridge
+
+  api:
+    depends_on:
+      - rabbitmq
+      - mongodb
+    container_name: api-mds
+    build: ./api
+    restart: "no" # unless-stopped
+    ports:
+      - 8088:8088
+    volumes:
+      - ./api/code:/usr/app
+      - /usr/app/node_modules/
+    networks:
+      - bridge
+
+  worker_plat:
+    depends_on:
+      - rabbitmq
+      - mongodb
+      - api
+    container_name: worker-plat
+    build: ./worker_plat
+    restart: "no" # unless-stopped
+    ports:
+      - 8089:8089
+    volumes:
+      - ./worker_plat/code:/usr/app
+      - /usr/app/node_modules/
+    networks:
+      - bridge
+
+networks:
+  bridge:
+
+volumes:
+  data_mongodb:
